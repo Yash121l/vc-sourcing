@@ -39,7 +39,10 @@ Phases beyond 01–02 exist in the workflow but are **out of scope for this spri
 | API | **Hono** | `@hono/node-server`, RPC-style types |
 | Database | **Drizzle ORM** + LibSQL | `.db` file locally, Turso in production |
 | AI Agents | **Anthropic SDK** | Model: `claude-sonnet-4-6`, streaming |
-| Auth | **Better Auth** | (future sprint — scaffold routes now) |
+| Auth | **WorkOS AuthKit** | JWT-based, SSO-ready, RBAC; dev mode bypasses auth |
+| Analytics | **PostHog** | Feature flags, A/B tests, session replay |
+| Monitoring | **Sentry** | Error tracking + performance |
+| CF Deploy | **Wrangler** | CF Workers (API) + CF Pages (web) |
 
 ---
 
@@ -502,48 +505,82 @@ pnpm --filter @vc/api dev
 # Database
 pnpm db:generate     # generate Drizzle migrations
 pnpm db:migrate      # apply migrations
+pnpm db:seed         # seed with sample Indian startups
 pnpm db:studio       # open Drizzle Studio
 
 # Testing
-pnpm test            # all packages
-pnpm --filter @vc/web test --ui   # vitest UI
+pnpm test                             # all unit tests (one-shot)
+pnpm test:watch                       # watch mode
+pnpm --filter @vc/web test --ui       # vitest UI for web
+pnpm --filter @vc/api test:coverage   # API coverage report
+pnpm test:e2e                         # Playwright E2E (needs servers running)
+pnpm test:e2e:ui                      # Playwright interactive UI
 
 # Linting
-pnpm lint            # oxlint + eslint
+pnpm lint            # oxlint + eslint across all packages
+
+# Type checking
+pnpm type-check      # all packages
+
+# Docker dev environment
+docker compose up -d          # start all services
+docker compose logs -f api    # stream API logs
+docker compose down           # stop
+
+# Cloudflare (requires CLOUDFLARE_API_TOKEN env var)
+pnpm exec wrangler pages deploy apps/web/dist --project-name=vc-sourcing  # deploy web
+pnpm exec wrangler deploy --config apps/api/wrangler.toml                  # deploy API
+pnpm exec wrangler secret put ANTHROPIC_API_KEY --config apps/api/wrangler.toml
 ```
 
 ---
 
 ## 13. Current Build Status
 
-### ✅ Completed (scaffold)
+### ✅ Completed (Sprint 1)
 - Monorepo structure with pnpm workspaces
-- Root TypeScript config
+- Root TypeScript config, oxlint config (`.oxlintrc.json`)
 - packages/types — shared types
-- packages/db — Drizzle schema
-- apps/api — Hono API with all routes + AI agents
+- packages/db — Drizzle schema (companies, contacts, screenings, signals, **fund_config**)
+- apps/api — Hono API:
+  - All CRUD routes (companies, screenings, signals, agents)
+  - **Auth middleware** (`middleware/auth.ts`) — WorkOS JWT or dev bypass
+  - **Validation middleware** (`middleware/validate.ts`) — error handler, rate limiter, pagination
+  - **Auth routes** (`routes/auth.ts`) — WorkOS AuthKit flow
+  - **Config routes** (`routes/config.ts`) — fund config CRUD, org-scoped
+  - AI agents: SourcingAgent, ScreeningAgent, EnrichmentAgent
+  - Cloudflare Workers entry (`src/index.worker.ts`)
+  - `wrangler.toml` for CF Workers
+  - Vitest config + unit tests (`src/__tests__/`)
 - apps/web — Full React app:
   - Vite + Tailwind v4 config
   - AppShell, Sidebar, TopBar (responsive, dark/light)
   - Theme system (Zustand + CSS variables)
   - TanStack Router setup
-  - All core UI components (Button, Card, Badge, Input, Dialog, Tabs, etc.)
-  - DashboardPage — metrics overview
-  - SourcingPipelinePage — Kanban + list toggle
-  - DiscoverPage — company search + add
-  - SignalsPage — signal feed
-  - ScreeningQueuePage — screening queue
-  - ScreeningDetailPage — 6-dim scorecard + AI panel
+  - All core UI components
+  - DashboardPage, SourcingPipelinePage, DiscoverPage, SignalsPage
+  - ScreeningQueuePage, ScreeningDetailPage
+  - **PostHog** (`lib/posthog.ts`) — analytics + A/B testing
+  - **Sentry** (`lib/sentry.ts`) — error tracking
+  - **Auth utilities** (`lib/auth.ts`) — WorkOS frontend flow
+  - `wrangler.toml` for CF Pages
+  - Unit tests (`src/__tests__/`)
+- Infrastructure:
+  - `docker-compose.yml` + `Dockerfile.api` + `Dockerfile.web`
+  - `.github/workflows/ci.yml` — lint, type-check, unit tests, E2E
+  - `.github/workflows/deploy.yml` — CF Pages + CF Workers deploy
+  - `playwright.config.ts` + `e2e/dashboard.spec.ts`
 
 ### 🔲 Next Sprint (AI to build)
 - `CompanyDetailPage` — full profile with signals, contacts, outreach timeline
 - `AgentsPage` — AI agent activity log and manual triggers
+- `SettingsPage` — fund config UI (uses `/api/config`)
+- Login page + WorkOS callback route (`/auth/callback`)
 - Outreach tracking UI (`/sourcing/outreach`)
 - PDF export for IC memo and one-pager
 - Network/relationship map (`/sourcing/network`)
 - Batch import from CSV / Crunchbase
-- Auth (Better Auth) — login, team management
-- Email notifications (Resend) for pipeline updates
+- Email notifications (Resend) — auto-ack + auto-pass templates
 - Webhooks for real-time signal ingestion
 - Modules 03–09 (DD through Exit) — detailed UI for each phase
 
@@ -567,16 +604,243 @@ Run: `pnpm --filter @vc/db run seed`
 
 ---
 
-## 15. AI Agent Instructions for Continuation
+## 15. Test-Driven Development (TDD) Rules
+
+### Philosophy
+Write tests first. Tests document intent and prevent regressions. Every piece of business logic must have a test.
+
+### Test Hierarchy
+| Type | Tool | Location | When to write |
+|---|---|---|---|
+| Unit | Vitest | `src/__tests__/*.test.ts` | All pure functions, middleware, agents |
+| Component | Vitest + Testing Library | `src/__tests__/*.test.tsx` | All stateful React components |
+| Integration | Vitest | `src/__tests__/*.integration.test.ts` | API routes that touch the DB |
+| E2E | Playwright | `e2e/*.spec.ts` | Critical user flows only |
+
+### Rules
+1. **New function → test file first** — write the test, see it fail, then implement.
+2. **No `any` in tests** — type your mocks explicitly.
+3. **Test behaviour, not implementation** — assert what the function returns, not how it does it.
+4. **One assertion per test** when possible. If a test has 5 assertions, it probably needs to be 5 tests.
+5. **Mock at boundaries only** — mock external services (Anthropic, WorkOS), never mock internal functions.
+6. **Use `vi.fn()` for mocks**, `vi.spyOn()` for spying on real objects.
+7. **All tests must run in CI** — no `.skip` or `.only` in committed code.
+
+### Web test pattern
+```typescript
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect } from 'vitest'
+import { MyComponent } from '../components/MyComponent'
+
+describe('MyComponent', () => {
+  it('does X when Y happens', async () => {
+    render(<MyComponent />)
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }))
+    expect(screen.getByText(/success/i)).toBeInTheDocument()
+  })
+})
+```
+
+### API test pattern
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+describe('POST /api/companies', () => {
+  it('creates a company and returns 201', async () => {
+    const res = await app.request('/api/companies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Acme', source_type: 'inbound_portal' }),
+    })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.name).toBe('Acme')
+  })
+})
+```
+
+### A/B Testing with PostHog
+```typescript
+import { getVariant } from '@/lib/posthog'
+
+// In component
+const variant = getVariant('screening-cta-v2')
+// 'control' | 'treatment-a' | 'treatment-b'
+
+// Track experiment result
+captureEvent('screening_cta_clicked', { variant, company_id: id })
+```
+
+---
+
+## 16. Authentication (WorkOS)
+
+### Architecture
+- **Dev mode**: Auth is bypassed. API sets a mock user in context. Set `REQUIRE_AUTH=false` (default).
+- **Production**: WorkOS AuthKit handles login. JWT Bearer token on every API request.
+
+### Auth flow
+```
+Frontend                          API                    WorkOS
+   |                               |                        |
+   |-- GET /api/auth/url --------> |                        |
+   |                               |-- getAuthorizationUrl ->|
+   |<-- { url: "https://..." } ----|                        |
+   |                               |                        |
+   |-- redirect to WorkOS ---------|----------------------->|
+   |<-- redirect + code -----------|------------------------|
+   |                               |                        |
+   |-- POST /api/auth/callback --> |                        |
+   |   { code: "abc123" }          |-- authenticateWithCode->|
+   |                               |<-- { user, token } ----|
+   |<-- { access_token, user } ----|                        |
+   |                               |                        |
+   |-- GET /api/companies -------> |                        |
+   |   Authorization: Bearer tok   |-- verify token ------->|
+   |<-- { data: [...] } -----------|                        |
+```
+
+### Environment variables for auth
+```bash
+# apps/api/.env
+WORKOS_API_KEY=sk_test_...          # from WorkOS dashboard
+WORKOS_CLIENT_ID=client_...         # from WorkOS dashboard
+REQUIRE_AUTH=false                  # set to "true" in production
+```
+
+### Role system
+Currently all authenticated users have full access. Roles are configurable via WorkOS RBAC.
+Future: `requireRole('analyst')` middleware enforces role at route level.
+
+---
+
+## 17. VC Fund Configuration
+
+Each VC firm can customise the platform via `GET/PATCH /api/config`. Settings are org-scoped (WorkOS `organizationId`).
+
+```typescript
+// Key configurable fields
+{
+  fund_name: string,                    // "Accel India Fund III"
+  fund_thesis: string,                  // Free-text thesis
+  target_stages: string[],             // ["seed", "series_a"]
+  target_sectors: string[],            // ["fintech", "saas"]
+  min_check_usd: number,               // 500_000
+  max_check_usd: number,               // 5_000_000
+  pre_screen_advance_threshold: number, // 70 (0-100 AI score)
+  pre_screen_pass_threshold: number,    // 40 (auto-pass below this)
+  score_weights: {                      // relative multipliers for overall score
+    team: 1.5,
+    market: 1.0,
+    product: 1.0,
+    traction: 1.0,
+    business_model: 1.0,
+    investment_fit: 1.5,
+  },
+  analyst_review_sla_hours: 72,
+  analyst_emails: string[],
+  ic_member_emails: string[],
+}
+```
+
+AI agents read the fund config to customise scoring. E.g., if `target_stages = ["seed"]`, the AI scores early-stage startups higher on `investment_fit`.
+
+---
+
+## 18. Cloudflare Deployment
+
+### Architecture
+```
+cloudflare/
+├── CF Pages    → apps/web (React SPA, built to dist/)
+└── CF Workers  → apps/api (Hono API via index.worker.ts)
+    └── Turso   → Database (LibSQL HTTP — replaces SQLite file)
+```
+
+### Prerequisites
+```bash
+# Install Wrangler globally or use pnpm exec
+pnpm exec wrangler login
+
+# Create CF Pages project (once)
+pnpm exec wrangler pages project create vc-sourcing
+
+# Create Turso database (once)
+turso db create vc-sourcing-prod
+turso db tokens create vc-sourcing-prod
+```
+
+### Deploy web (CF Pages)
+```bash
+# Build and deploy
+pnpm --filter @vc/web build
+pnpm exec wrangler pages deploy apps/web/dist --project-name=vc-sourcing
+```
+
+### Deploy API (CF Workers)
+```bash
+# Set secrets first
+pnpm exec wrangler secret put ANTHROPIC_API_KEY --config apps/api/wrangler.toml
+pnpm exec wrangler secret put WORKOS_API_KEY --config apps/api/wrangler.toml
+pnpm exec wrangler secret put DATABASE_URL --config apps/api/wrangler.toml
+pnpm exec wrangler secret put DATABASE_AUTH_TOKEN --config apps/api/wrangler.toml
+
+# Deploy
+pnpm exec wrangler deploy --config apps/api/wrangler.toml
+```
+
+### Local SQLite → Turso migration
+```bash
+# Push local DB to Turso
+turso db shell vc-sourcing-prod < packages/db/local.db
+```
+
+### Important: Workers DB connection
+CF Workers use the HTTP LibSQL client. The app auto-detects based on `DATABASE_URL` prefix:
+- `file:` → local SQLite (development)
+- `libsql://` → Turso HTTP (production)
+
+---
+
+## 19. Monitoring & Observability
+
+### PostHog (analytics + feature flags)
+- Init: `initPostHog()` called in `apps/web/src/main.tsx`
+- Auto-disabled in development (opt-out capturing)
+- Feature flags: `isFeatureEnabled('flag-key')`
+- A/B tests: `getVariant('experiment-key')` → `'control' | 'treatment-a'`
+- Event tracking: `captureEvent('event_name', { prop: value })`
+
+### Sentry (error tracking)
+- Init: `initSentry()` called in `apps/web/src/main.tsx`
+- Only active when `VITE_SENTRY_DSN` is set
+- Captures unhandled errors, performance traces, and session replays
+- Use `captureError(err, context)` for manual captures
+
+### Key events to track
+```typescript
+captureEvent('company_added', { sector, stage, source_type })
+captureEvent('ai_prescreened', { company_id, score, recommendation })
+captureEvent('screening_started', { company_id })
+captureEvent('ic_memo_generated', { company_id, streaming: true })
+captureEvent('decision_submitted', { company_id, decision })
+```
+
+---
+
+## 20. AI Agent Instructions for Continuation
 
 When building new features:
 1. Check this CLAUDE.md for context
 2. Read the relevant existing code before writing new code
 3. Follow the existing patterns exactly (same imports, same structure)
-4. Add tests for all business logic
-5. Update this CLAUDE.md when you add new features
+4. **Write the test first** (TDD) — see Section 15
+5. Update this CLAUDE.md when you add new features (especially sections 13 and 18)
 6. Keep API routes in sync with the Hono RPC types (shared via packages/types)
 7. Never break existing TypeScript types
 8. Always handle loading + error states in UI components
 9. Every new page must support dark mode from day one
 10. Run `pnpm type-check` before considering a task complete
+11. For Cloudflare compatibility: avoid Node.js-only APIs in API routes (use Web APIs)
+12. Fund config affects AI scoring — always read config before running agents

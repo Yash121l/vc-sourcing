@@ -1,0 +1,31 @@
+name = "vc-sourcing-api"
+main = "src/index.worker.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[build]
+command = "pnpm build"
+
+# Local development bindings
+[dev]
+port = 3001
+local_protocol = "http"
+ip = "0.0.0.0"
+
+# Production environment variables (set real values via wrangler secret put)
+[vars]
+WEB_URL = "https://vc-sourcing.pages.dev"
+REQUIRE_AUTH = "true"
+
+# Secrets to configure (run: wrangler secret put SECRET_NAME):
+# - ANTHROPIC_API_KEY
+# - WORKOS_API_KEY
+# - WORKOS_CLIENT_ID
+# - DATABASE_URL        (Turso URL: libsql://your-db.turso.io)
+# - DATABASE_AUTH_TOKEN (Turso auth token)
+
+# Turso database binding (alternative to HTTP URL)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "vc-sourcing"
+# database_id = "YOUR_D1_DATABASE_ID"

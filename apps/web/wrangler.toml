@@ -1,0 +1,13 @@
+name = "vc-sourcing"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-09-23"
+
+[build]
+command = "pnpm build"
+cwd = "."
+
+[env.production.vars]
+VITE_APP_ENV = "production"
+
+[env.staging.vars]
+VITE_APP_ENV = "staging"

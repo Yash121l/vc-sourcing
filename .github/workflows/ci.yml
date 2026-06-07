@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "9"
+
+jobs:
+  lint:
+    name: Lint & Type-Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint (oxlint + eslint)
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm type-check
+
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run unit tests
+        run: pnpm test --run
+        env:
+          DATABASE_URL: file::memory:
+          ANTHROPIC_API_KEY: sk-test-placeholder
+          PORT: "3001"
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  test-e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build web
+        run: pnpm --filter @vc/web build
+        env:
+          VITE_API_URL: http://localhost:3001
+          VITE_APP_ENV: test
+
+      - name: Setup database
+        run: pnpm db:generate && pnpm db:migrate
+        env:
+          DATABASE_URL: file:./e2e-test.db
+
+      - name: Start API server
+        run: |
+          pnpm --filter @vc/api dev &
+          sleep 5
+        env:
+          DATABASE_URL: file:./e2e-test.db
+          ANTHROPIC_API_KEY: sk-test-placeholder
+          PORT: "3001"
+
+      - name: Start web preview server
+        run: |
+          pnpm --filter @vc/web preview --port 5173 &
+          sleep 3
+
+      - name: Run E2E tests
+        run: pnpm exec playwright test --project=chromium
+        env:
+          E2E_BASE_URL: http://localhost:5173
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-report
+          path: e2e-report/
+          retention-days: 14
+
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build web
+        run: pnpm --filter @vc/web build
+        env:
+          VITE_API_URL: https://api.example.com
+          VITE_APP_ENV: production
+
+      - name: Type-check API
+        run: pnpm --filter @vc/api type-check

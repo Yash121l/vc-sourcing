@@ -5,14 +5,19 @@
   "scripts": {
     "dev": "pnpm --parallel run dev",
     "build": "pnpm --recursive run build",
-    "test": "pnpm --recursive run test",
+    "test": "pnpm --recursive --filter !@vc/db run test --run",
+    "test:watch": "pnpm --recursive --filter !@vc/db run test",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "lint": "pnpm --recursive run lint",
     "type-check": "pnpm --recursive run type-check",
     "db:generate": "pnpm --filter @vc/db run generate",
     "db:migrate": "pnpm --filter @vc/db run migrate",
+    "db:seed": "pnpm --filter @vc/db run seed",
     "db:studio": "pnpm --filter @vc/db run studio"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "typescript": "^5.7.3"
   },
   "engines": {

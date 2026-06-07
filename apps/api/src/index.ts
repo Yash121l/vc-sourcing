@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
@@ -10,11 +11,26 @@ import { db, companies, contacts, screenings, signals } from '@vc/db'
 import { SourcingAgent } from './agents/sourcing-agent'
 import { ScreeningAgent } from './agents/screening-agent'
 import { EnrichmentAgent } from './agents/enrichment-agent'
+import { authMiddleware } from './middleware/auth'
+import { errorHandler, rateLimiter } from './middleware/validate'
+import { authRoute } from './routes/auth'
+import { configRoute } from './routes/config'
 
 const app = new Hono()
 
+app.use('*', errorHandler())
+app.use('*', rateLimiter({ windowMs: 60_000, max: 300 }))
 app.use('*', logger())
 app.use('*', cors({ origin: process.env['WEB_URL'] ?? 'http://localhost:5173', credentials: true }))
+
+// Auth routes — no authentication required
+app.route('/api/auth', authRoute)
+
+// Apply auth middleware to all other /api/* routes
+app.use('/api/*', authMiddleware)
+
+// Fund config routes (org-scoped)
+app.route('/api/config', configRoute)
 
 // ─── Health ──────────────────────────────────────────────────────────────────
 
@@ -192,6 +208,18 @@ app.post('/api/signals/:id/read', async (c) => {
 // ─── AI Agents ────────────────────────────────────────────────────────────────
 
 const agentsRoute = new Hono()
+
+function requireAI() {
+  return async (c: Parameters<Parameters<typeof agentsRoute.use>[0]>[0], next: () => Promise<void>) => {
+    const key = process.env['ANTHROPIC_API_KEY']
+    if (!key || key.startsWith('sk-ant-api03-REPLACE')) {
+      return c.json({ error: { code: 'AI_NOT_CONFIGURED', message: 'ANTHROPIC_API_KEY not set. Add it to apps/api/.env to use AI features.' } }, 503)
+    }
+    await next()
+  }
+}
+
+agentsRoute.use('/*', requireAI() as never)
 
 agentsRoute.post('/pre-screen', zValidator('json', z.object({
   name: z.string(),
