@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Design Tokens ──────────────────────────────────────────────────────── */
+
+@theme inline {
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-border: var(--sidebar-border);
+}
+
+/* ─── Light Mode ─────────────────────────────────────────────────────────── */
+
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.961 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.961 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.961 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --sidebar-bg: oklch(0.975 0 0);
+  --sidebar-border: oklch(0.912 0 0);
+
+  /* VC Phase colors */
+  --sourcing: #7c3aed;
+  --screening: #6366f1;
+  --dd: #f59e0b;
+  --ic: #ef4444;
+  --closing: #10b981;
+
+  /* Status colors */
+  --status-radar: #64748b;
+  --status-contacted: #3b82f6;
+  --status-engaged: #8b5cf6;
+  --status-screening: #6366f1;
+  --status-passed: #ef4444;
+  --status-watch: #f59e0b;
+  --status-proceeding: #10b981;
+}
+
+/* ─── Dark Mode ──────────────────────────────────────────────────────────── */
+
+.dark {
+  --background: oklch(0.096 0.014 250);
+  --foreground: oklch(0.88 0.01 240);
+  --card: oklch(0.13 0.016 250);
+  --card-foreground: oklch(0.88 0.01 240);
+  --popover: oklch(0.13 0.016 250);
+  --popover-foreground: oklch(0.88 0.01 240);
+  --primary: oklch(0.88 0.01 240);
+  --primary-foreground: oklch(0.145 0 0);
+  --secondary: oklch(0.185 0.016 250);
+  --secondary-foreground: oklch(0.88 0.01 240);
+  --muted: oklch(0.185 0.016 250);
+  --muted-foreground: oklch(0.52 0.02 250);
+  --accent: oklch(0.185 0.016 250);
+  --accent-foreground: oklch(0.88 0.01 240);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.22 0.016 250);
+  --input: oklch(0.22 0.016 250);
+  --ring: oklch(0.42 0.02 250);
+  --sidebar-bg: oklch(0.08 0.014 250);
+  --sidebar-border: oklch(0.19 0.016 250);
+}
+
+/* ─── Base Styles ────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  border-color: var(--border);
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+/* ─── Focus ──────────────────────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 currentColor; }
+  70% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.animate-fade-in { animation: fadeIn 0.2s ease-out; }
+.animate-slide-in { animation: slideInLeft 0.2s ease-out; }
+
+/* ─── Typography helpers ─────────────────────────────────────────────────── */
+
+.font-display { font-family: var(--font-display); }
+.font-mono { font-family: var(--font-mono); }
+
+/* ─── VC-specific utilities ──────────────────────────────────────────────── */
+
+.score-ring {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 300;
+}
+
+.phase-glow {
+  box-shadow: 0 0 20px -5px currentColor;
+}
+
+/* Kanban card hover */
+.kanban-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.kanban-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px -4px rgba(0,0,0,0.15);
+}
+
+/* Signal type dot animation */
+.signal-live::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-ring 2s infinite;
+  margin-right: 6px;
+}
+
+/* Streaming text cursor */
+.streaming::after {
+  content: '▊';
+  animation: blink 1s infinite;
+}
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}

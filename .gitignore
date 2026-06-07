@@ -1,0 +1,19 @@
+node_modules
+# Prevent tsc from outputting next to source files — use `vite build` instead
+apps/web/src/**/*.js
+apps/web/src/**/*.js.map
+dist
+.turbo
+*.local
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.DS_Store
+coverage
+.nyc_output
+*.tsbuildinfo
+apps/web/src/routeTree.gen.ts

@@ -1,0 +1,23 @@
+{
+  "name": "vc-sourcing",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "build": "pnpm --recursive run build",
+    "test": "pnpm --recursive run test",
+    "lint": "pnpm --recursive run lint",
+    "type-check": "pnpm --recursive run type-check",
+    "db:generate": "pnpm --filter @vc/db run generate",
+    "db:migrate": "pnpm --filter @vc/db run migrate",
+    "db:studio": "pnpm --filter @vc/db run studio"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
