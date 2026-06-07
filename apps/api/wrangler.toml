@@ -1,31 +1,42 @@
 name = "vc-sourcing-api"
-main = "src/index.worker.ts"
+main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 [build]
-command = "pnpm build"
+command = ""
 
-# Local development bindings
 [dev]
-port = 3001
+port = 8787
 local_protocol = "http"
 ip = "0.0.0.0"
 
-# Production environment variables (set real values via wrangler secret put)
+# ── D1 Database ────────────────────────────────────────────────────────────────
+# Run `wrangler d1 create vc-sourcing` to create and get database_id
+# Then replace placeholder below. For local --local mode any value works.
+[[d1_databases]]
+binding = "DB"
+database_name = "vc-sourcing"
+database_id = "placeholder-run-wrangler-d1-create-to-get-real-id"
+migrations_dir = "migrations"
+
+# ── Non-secret vars ────────────────────────────────────────────────────────────
 [vars]
 WEB_URL = "https://vc-sourcing.pages.dev"
 REQUIRE_AUTH = "true"
 
-# Secrets to configure (run: wrangler secret put SECRET_NAME):
-# - ANTHROPIC_API_KEY
-# - WORKOS_API_KEY
-# - WORKOS_CLIENT_ID
-# - DATABASE_URL        (Turso URL: libsql://your-db.turso.io)
-# - DATABASE_AUTH_TOKEN (Turso auth token)
+# ── Staging / dev env overrides ────────────────────────────────────────────────
+[env.development.vars]
+WEB_URL = "http://localhost:5173"
+REQUIRE_AUTH = "false"
 
-# Turso database binding (alternative to HTTP URL)
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "vc-sourcing"
-# database_id = "YOUR_D1_DATABASE_ID"
+# ── Secrets (set with: wrangler secret put SECRET_NAME) ───────────────────────
+# ANTHROPIC_API_KEY
+# WORKOS_API_KEY
+# WORKOS_CLIENT_ID
+
+# ── R2 bucket (for PDF exports, attachments) ──────────────────────────────────
+# Uncomment when needed:
+# [[r2_buckets]]
+# binding = "STORAGE"
+# bucket_name = "vc-sourcing-files"

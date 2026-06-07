@@ -4,8 +4,11 @@ export abstract class BaseAgent {
   protected client: Anthropic
   protected model = 'claude-sonnet-4-6' as const
 
-  constructor() {
-    this.client = new Anthropic({ apiKey: process.env['ANTHROPIC_API_KEY'] })
+  constructor(apiKey: string) {
+    if (!apiKey || apiKey.startsWith('sk-ant-api03-REPLACE')) {
+      throw new Error('ANTHROPIC_API_KEY is not configured.')
+    }
+    this.client = new Anthropic({ apiKey })
   }
 
   protected async run(system: string, user: string): Promise<string> {

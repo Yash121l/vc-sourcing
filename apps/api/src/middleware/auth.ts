@@ -1,44 +1,26 @@
 import type { Context, Next } from 'hono'
 import { WorkOS } from '@workos-inc/node'
+import type { AppEnv, AuthUser } from '../env'
 
-let workos: WorkOS | null = null
+const wosCache = new Map<string, WorkOS>()
 
-function getWorkOS() {
-  if (!workos) {
-    const key = process.env['WORKOS_API_KEY']
-    if (!key || key.startsWith('sk_test_REPLACE')) return null
-    workos = new WorkOS(key)
-  }
-  return workos
+function getWorkOS(apiKey: string | undefined): WorkOS | null {
+  if (!apiKey || apiKey.startsWith('sk_test_REPLACE')) return null
+  if (!wosCache.has(apiKey)) wosCache.set(apiKey, new WorkOS(apiKey))
+  return wosCache.get(apiKey)!
 }
 
-export interface AuthUser {
-  id: string
-  email: string
-  firstName?: string | undefined
-  lastName?: string | undefined
-  organizationId?: string | undefined
-}
-
-declare module 'hono' {
-  interface ContextVariableMap {
-    user: AuthUser | null
-  }
-}
-
-export async function authMiddleware(c: Context, next: Next) {
-  // Skip auth in dev if REQUIRE_AUTH is not set
-  const requireAuth = process.env['REQUIRE_AUTH'] === 'true'
-  const wos = getWorkOS()
+export async function authMiddleware(c: Context<AppEnv>, next: Next) {
+  const requireAuth = c.env.REQUIRE_AUTH === 'true'
+  const wos = getWorkOS(c.env.WORKOS_API_KEY)
 
   if (!wos || !requireAuth) {
-    // Development mode: no auth required — set mock user
     c.set('user', {
       id: 'dev-user-1',
       email: 'dev@vc.local',
       firstName: 'Dev',
       lastName: 'User',
-      organizationId: process.env['DEFAULT_ORGANIZATION_ID'] ?? 'org-dev',
+      organizationId: 'org-dev',
     })
     return next()
   }
@@ -49,20 +31,20 @@ export async function authMiddleware(c: Context, next: Next) {
   }
 
   const token = authHeader.slice(7)
-
   try {
-    const { sealedSession } = await wos.userManagement.authenticateWithSessionToken({
-      token,
-      clientId: process.env['WORKOS_CLIENT_ID'] ?? '',
-    })
-    // For WorkOS AuthKit, verify the session
-    const session = await wos.userManagement.getSession({ sessionId: token })
+    const parts = token.split('.')
+    if (parts.length !== 3) throw new Error('Invalid token format')
+    // Decode JWT payload to get userId (sub claim)
+    const payload = JSON.parse(atob(parts[1]!.replace(/-/g, '+').replace(/_/g, '/'))) as { sub?: string }
+    const userId = payload.sub
+    if (!userId) throw new Error('Missing sub claim')
+    const user = await wos.userManagement.getUser(userId)
     c.set('user', {
-      id: session.userId,
-      email: session.user?.email ?? '',
-      firstName: session.user?.firstName ?? undefined,
-      lastName: session.user?.lastName ?? undefined,
-      organizationId: session.organizationId ?? undefined,
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName ?? undefined,
+      lastName: user.lastName ?? undefined,
+      organizationId: undefined,
     })
     return next()
   } catch {
@@ -71,13 +53,11 @@ export async function authMiddleware(c: Context, next: Next) {
 }
 
 export function requireRole(_role: 'analyst' | 'principal' | 'partner' | 'admin') {
-  return async (c: Context, next: Next) => {
-    // Role checking — implement with WorkOS RBAC or your own logic
-    // For now, allow all authenticated users
+  return async (c: Context<AppEnv>, next: Next) => {
     const user = c.get('user')
-    if (!user) {
-      return c.json({ error: { code: 'FORBIDDEN', message: 'Access denied' } }, 403)
-    }
+    if (!user) return c.json({ error: { code: 'FORBIDDEN', message: 'Access denied' } }, 403)
     return next()
   }
 }
+
+export type { AuthUser }

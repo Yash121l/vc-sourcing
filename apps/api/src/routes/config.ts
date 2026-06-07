@@ -2,9 +2,10 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
-import { db, fundConfig } from '@vc/db'
+import { fundConfig } from '@vc/db'
+import type { AppEnv } from '../env'
 
-const config = new Hono()
+const config = new Hono<AppEnv>()
 
 const configUpdateSchema = z.object({
   fund_name: z.string().min(1).optional(),
@@ -36,21 +37,16 @@ const configUpdateSchema = z.object({
   auto_ack_email_enabled: z.boolean().optional(),
 })
 
-// Get fund config (org-scoped via auth context)
 config.get('/', async (c) => {
+  const db = c.get('db')
   const user = c.get('user')
-  const orgId = user?.organizationId ?? 'default'
+  const orgId = user?.organizationId ?? 'org-dev'
 
-  let cfg = await db.query.fundConfig.findFirst({
-    where: eq(fundConfig.org_id, orgId),
-  })
-
+  let cfg = await db.query.fundConfig.findFirst({ where: eq(fundConfig.org_id, orgId) })
   if (!cfg) {
-    // Auto-create default config
     const [created] = await db.insert(fundConfig).values({ org_id: orgId }).returning()
     cfg = created
   }
-
   if (!cfg) return c.json({ error: { code: 'NOT_FOUND', message: 'Config not found' } }, 404)
 
   return c.json({
@@ -67,15 +63,13 @@ config.get('/', async (c) => {
   })
 })
 
-// Update fund config
 config.patch('/', zValidator('json', configUpdateSchema), async (c) => {
+  const db = c.get('db')
   const user = c.get('user')
-  const orgId = user?.organizationId ?? 'default'
+  const orgId = user?.organizationId ?? 'org-dev'
   const body = c.req.valid('json')
 
-  let cfg = await db.query.fundConfig.findFirst({
-    where: eq(fundConfig.org_id, orgId),
-  })
+  let cfg = await db.query.fundConfig.findFirst({ where: eq(fundConfig.org_id, orgId) })
   if (!cfg) {
     const [created] = await db.insert(fundConfig).values({ org_id: orgId }).returning()
     cfg = created!
@@ -94,8 +88,6 @@ config.patch('/', zValidator('json', configUpdateSchema), async (c) => {
   if (body.pre_screen_advance_threshold !== undefined) update['pre_screen_advance_threshold'] = body.pre_screen_advance_threshold
   if (body.score_weights !== undefined) update['score_weights'] = JSON.stringify(body.score_weights)
   if (body.analyst_review_sla_hours !== undefined) update['analyst_review_sla_hours'] = body.analyst_review_sla_hours
-  if (body.ic_review_sla_hours !== undefined) update['ic_review_sla_hours'] = body.ic_review_sla_hours
-  if (body.analyst_emails !== undefined) update['analyst_emails'] = JSON.stringify(body.analyst_emails)
   if (body.ic_member_emails !== undefined) update['ic_member_emails'] = JSON.stringify(body.ic_member_emails)
   if (body.partner_emails !== undefined) update['partner_emails'] = JSON.stringify(body.partner_emails)
   if (body.primary_currency !== undefined) update['primary_currency'] = body.primary_currency
@@ -103,11 +95,7 @@ config.patch('/', zValidator('json', configUpdateSchema), async (c) => {
   if (body.auto_pass_email_enabled !== undefined) update['auto_pass_email_enabled'] = body.auto_pass_email_enabled
   if (body.auto_ack_email_enabled !== undefined) update['auto_ack_email_enabled'] = body.auto_ack_email_enabled
 
-  const [updated] = await db.update(fundConfig)
-    .set(update)
-    .where(eq(fundConfig.id, cfg.id))
-    .returning()
-
+  const [updated] = await db.update(fundConfig).set(update).where(eq(fundConfig.id, cfg.id)).returning()
   return c.json({ data: updated })
 })
 

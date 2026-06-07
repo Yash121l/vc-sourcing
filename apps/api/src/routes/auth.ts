@@ -2,35 +2,40 @@ import { Hono } from 'hono'
 import { WorkOS } from '@workos-inc/node'
 import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
+import type { AppEnv } from '../env'
 
-const auth = new Hono()
+const auth = new Hono<AppEnv>()
 
-function getWorkOS() {
-  const key = process.env['WORKOS_API_KEY']
-  const clientId = process.env['WORKOS_CLIENT_ID']
+function getWorkOS(env: AppEnv['Bindings']) {
+  const key = env.WORKOS_API_KEY
+  const clientId = env.WORKOS_CLIENT_ID
   if (!key || !clientId || key.startsWith('sk_test_REPLACE')) return null
   return { wos: new WorkOS(key), clientId }
 }
 
-// Get auth URL — redirect user to WorkOS login
 auth.get('/url', (c) => {
-  const ctx = getWorkOS()
+  const ctx = getWorkOS(c.env)
   if (!ctx) {
-    return c.json({ data: { url: null, dev_mode: true, message: 'Auth disabled in dev mode. Set WORKOS_API_KEY to enable.' } })
+    return c.json({ data: { url: null, dev_mode: true, message: 'Set WORKOS_API_KEY to enable auth.' } })
   }
-  const { url } = ctx.wos.userManagement.getAuthorizationUrl({
-    clientId: ctx.clientId,
-    redirectUri: `${process.env['WEB_URL'] ?? 'http://localhost:5173'}/auth/callback`,
-    provider: 'authkit',
-  })
-  return c.json({ data: { url } })
+  try {
+    const result = ctx.wos.userManagement.getAuthorizationUrl({
+      clientId: ctx.clientId,
+      redirectUri: `${c.env.WEB_URL ?? 'http://localhost:5173'}/auth/callback`,
+      provider: 'authkit',
+    })
+    // SDK may return string directly or { url } object
+    const url = typeof result === 'string' ? result : (result as { url?: string }).url ?? String(result)
+    return c.json({ data: { url } })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return c.json({ data: { url: null, error: msg } })
+  }
 })
 
-// Handle OAuth callback
 auth.post('/callback', zValidator('json', z.object({ code: z.string() })), async (c) => {
-  const ctx = getWorkOS()
+  const ctx = getWorkOS(c.env)
   if (!ctx) {
-    // Dev mode — return mock session
     return c.json({
       data: {
         access_token: 'dev-token',
@@ -38,7 +43,6 @@ auth.post('/callback', zValidator('json', z.object({ code: z.string() })), async
       },
     })
   }
-
   const { code } = c.req.valid('json')
   try {
     const { accessToken, user } = await ctx.wos.userManagement.authenticateWithCode({
@@ -51,16 +55,12 @@ auth.post('/callback', zValidator('json', z.object({ code: z.string() })), async
   }
 })
 
-// Get current user
-auth.get('/me', async (c) => {
+auth.get('/me', (c) => {
   const user = c.get('user')
   if (!user) return c.json({ error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401)
   return c.json({ data: { user } })
 })
 
-// Sign out
-auth.post('/signout', async (c) => {
-  return c.json({ data: { success: true } })
-})
+auth.post('/signout', (c) => c.json({ data: { success: true } }))
 
 export { auth as authRoute }
