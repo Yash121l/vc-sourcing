@@ -21,9 +21,9 @@ const KANBAN_COLUMNS: { status: CompanyStatus; label: string }[] = [
 ]
 
 function CompanyCard({ company }: { company: Company }) {
-  const cfg = STATUS_CONFIG[company.status]
   const sector = SECTOR_CONFIG[company.sector]
   const stage = STAGE_CONFIG[company.stage]
+  const SectorIcon = sector.icon
 
   return (
     <Link to="/sourcing/companies/$id" params={{ id: company.id }}>
@@ -38,7 +38,7 @@ function CompanyCard({ company }: { company: Company }) {
               <p className="text-[10px] text-muted-foreground">{company.city ?? company.geography ?? 'Unknown'}</p>
             </div>
           </div>
-          <span className="text-sm">{sector.icon}</span>
+          <SectorIcon className="size-4 text-muted-foreground shrink-0" />
         </div>
 
         {company.description && (
@@ -143,9 +143,11 @@ function ListView({ companies }: { companies: Company[] }) {
                   </div>
                 </td>
                 <td className="px-4 py-3 hidden sm:table-cell">
-                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span>{sector.icon}</span> {sector.label}
-                  </span>
+                  {(() => { const SectorIcon = sector.icon; return (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <SectorIcon className="size-3.5" /> {sector.label}
+                    </span>
+                  )})()}
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   <span className="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -202,7 +204,7 @@ export function SourcingPipelinePage() {
     <div className="flex flex-col h-full">
       <TopBar
         title="Deal Sourcing Pipeline"
-        subtitle="Phase 01 — Build & qualify the pipeline"
+        subtitle="Build & qualify the deal pipeline"
         actions={
           <div className="flex items-center gap-2">
             <div className="flex items-center rounded-md border border-border p-0.5">

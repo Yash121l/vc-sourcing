@@ -11,14 +11,15 @@ import type { Signal } from '@vc/types'
 
 function SignalRow({ signal, onRead }: { signal: Signal; onRead: () => void }) {
   const cfg = SIGNAL_CONFIG[signal.type]
+  const TypeIcon = cfg.icon
   return (
     <div
       className={`flex items-start gap-4 p-4 border-b border-border transition-colors ${!signal.is_read ? 'bg-blue-500/5' : ''}`}
       onClick={!signal.is_read ? onRead : undefined}
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base"
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
         style={{ background: `${cfg.color}15` }}>
-        {cfg.icon}
+        <TypeIcon className="size-4" style={{ color: cfg.color }} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
@@ -94,10 +95,11 @@ export function SignalsPage() {
           {byType.map(([type, count]) => {
             const cfg = SIGNAL_CONFIG[type as keyof typeof SIGNAL_CONFIG]
             if (!cfg) return null
+            const TypeIcon = cfg.icon
             return (
               <span key={type} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
                 style={{ background: `${cfg.color}15`, color: cfg.color }}>
-                {cfg.icon} {cfg.label}
+                <TypeIcon className="size-3.5" /> {cfg.label}
                 <span className="font-bold">{count}</span>
               </span>
             )

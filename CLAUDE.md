@@ -571,8 +571,16 @@ pnpm exec wrangler secret put ANTHROPIC_API_KEY --config apps/api/wrangler.toml
   - `.github/workflows/deploy.yml` — CF Pages + CF Workers deploy
   - `playwright.config.ts` + `e2e/dashboard.spec.ts`
 
+### ✅ Completed (Sprint 2)
+- `CompanyDetailPage` — full profile with signals, contacts, AI pre-screen, status selector, external links
+- `CommandPalette` — Cmd+K global search (companies + navigation, keyboard-navigable)
+- `useGlobalShortcuts` — G+H/P/D/S/Q/M/A keyboard navigation, Cmd+K palette
+- Sidebar active state fixed (exact match, no false-positive dual-active)
+- Sidebar phase labels removed (unified product, dividers only)
+- SECTOR_CONFIG + SIGNAL_CONFIG icons migrated from emoji to Lucide components
+- TopBar search replaced with Cmd+K trigger button
+
 ### 🔲 Next Sprint (AI to build)
-- `CompanyDetailPage` — full profile with signals, contacts, outreach timeline
 - `AgentsPage` — AI agent activity log and manual triggers
 - `SettingsPage` — fund config UI (uses `/api/config`)
 - Login page + WorkOS callback route (`/auth/callback`)
@@ -829,10 +837,57 @@ captureEvent('decision_submitted', { company_id, decision })
 
 ---
 
-## 20. AI Agent Instructions for Continuation
+## 20. UI Rules (Mandatory — Do Not Violate)
+
+These rules exist because past sessions introduced violations that required manual correction.
+
+### 20.1 No Emojis — Lucide Icons Only
+- **Never** render emoji characters (`💳`, `☁️`, `🔬`, etc.) anywhere in the UI.
+- Use **Lucide React** for every icon. Import only what you use: `import { CreditCard, Cloud } from 'lucide-react'`
+- `SECTOR_CONFIG.icon` and `SIGNAL_CONFIG.icon` are `LucideIcon` (component references), NOT strings.
+- To render: assign to a capitalized variable first: `const Icon = cfg.icon; return <Icon className="size-4" />`
+- DO NOT write `{cfg.icon}` directly in JSX — this renders the function object as a string.
+
+### 20.2 Unified Product — No Phase Labels in Navigation
+- The sidebar must **not** show section headers like "01 Deal Sourcing", "02 Initial Screening", "System".
+- This is one unified product. Use a simple `<div className="my-2 border-t border-sidebar-border" />` divider between nav groups.
+- NAV_ITEMS type: `{ type: 'divider' }` for separators, never `{ type: 'section', label: '...' }`.
+
+### 20.3 Sidebar Active State — Exact Match Only
+- **Never** use `location.pathname.startsWith(item.href)` as the sole active condition.
+- Correct logic: exact match, OR (item has `matchPrefix: true` AND no other nav item exactly matches the current path).
+- Without this, visiting `/sourcing/discover` makes BOTH Pipeline and Discover show as active.
+- Reference implementation: `Sidebar.tsx` active state logic.
+
+### 20.4 Global Search / Command Palette
+- Every page has a Cmd+K trigger in the TopBar that opens the `CommandPalette` component.
+- The TopBar search field is a **button** (not an Input) that calls `openCommandPalette()`.
+- `CommandPalette` fetches companies from API, allows keyboard navigation (↑↓ Enter Esc).
+- Store: `useUIStore` in `@/stores/ui` — `commandPaletteOpen`, `openCommandPalette`, `closeCommandPalette`.
+
+### 20.5 Keyboard Shortcuts (Required for All Pages)
+- All navigation via keyboard: `G+H` Dashboard, `G+P` Pipeline, `G+D` Discover, `G+S` Signals, `G+Q` Screening Queue, `G+M` IC Memos, `G+A` Agents.
+- `Cmd+K` / `Ctrl+K` opens command palette from anywhere.
+- Shortcuts are registered in `useGlobalShortcuts` hook (`@/hooks/useGlobalShortcuts.ts`), mounted in `AppShell`.
+- Shortcuts must NOT fire when focus is on an input, textarea, or contenteditable element.
+
+### 20.6 CompanyDetailPage Requirements
+- Route: `/sourcing/companies/$id` — MUST be a fully implemented page, never a placeholder.
+- Must show: company header (name, stage badge, sector label, location), status selector, metrics (ARR/MRR/growth), description, AI pre-screen score, contacts, signals, external links.
+- File: `apps/web/src/pages/sourcing/CompanyDetailPage.tsx`
+
+### 20.7 General UI Quality
+- All pages must handle loading state (Skeleton components) and error state (centered message + back button).
+- Dark mode must work on every new page — use CSS custom properties (`text-foreground`, `bg-card`, etc.), not hardcoded colors.
+- Max content width 1400px, centered with `mx-auto px-6`.
+- Kanban view: `overflow-x-auto` on the container, each column `w-72 shrink-0`, inner cards `overflow-y-auto`.
+
+---
+
+## 21. AI Agent Instructions for Continuation
 
 When building new features:
-1. Check this CLAUDE.md for context
+1. Check this CLAUDE.md for context — especially Section 20 (UI Rules) before touching any UI
 2. Read the relevant existing code before writing new code
 3. Follow the existing patterns exactly (same imports, same structure)
 4. **Write the test first** (TDD) — see Section 15

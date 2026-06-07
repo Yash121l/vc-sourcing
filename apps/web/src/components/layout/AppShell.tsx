@@ -1,5 +1,12 @@
 import { Outlet } from '@tanstack/react-router'
 import { Sidebar } from './Sidebar'
+import { CommandPalette } from '@/components/CommandPalette'
+import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts'
+
+function ShortcutsProvider() {
+  useGlobalShortcuts()
+  return null
+}
 
 export function AppShell() {
   return (
@@ -13,6 +20,10 @@ export function AppShell() {
       <main className="flex-1 overflow-y-auto">
         <Outlet />
       </main>
+
+      {/* Global overlays */}
+      <CommandPalette />
+      <ShortcutsProvider />
     </div>
   )
 }

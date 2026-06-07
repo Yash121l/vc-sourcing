@@ -1,7 +1,7 @@
 import { Sun, Moon, Monitor, Bell, Search } from 'lucide-react'
 import { useThemeStore } from '@/stores/theme'
+import { useUIStore } from '@/stores/ui'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 type Theme = 'light' | 'dark' | 'system'
@@ -28,6 +28,8 @@ interface TopBarProps {
 }
 
 export function TopBar({ title, subtitle, actions }: TopBarProps) {
+  const { openCommandPalette } = useUIStore()
+
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b border-border bg-background/95 backdrop-blur px-6">
       {/* Title area */}
@@ -40,14 +42,18 @@ export function TopBar({ title, subtitle, actions }: TopBarProps) {
         )}
       </div>
 
-      {/* Search */}
-      <div className="hidden md:flex w-64">
-        <Input
-          placeholder="Search companies..."
-          leftIcon={<Search />}
-          className="h-8 text-xs"
-        />
-      </div>
+      {/* Global search trigger */}
+      <button
+        type="button"
+        onClick={openCommandPalette}
+        className="hidden md:flex items-center gap-2 h-8 w-64 rounded-md border border-border bg-muted/50 px-3 text-xs text-muted-foreground hover:border-input hover:bg-muted transition-colors"
+      >
+        <Search className="size-3.5 shrink-0" />
+        <span className="flex-1 text-left">Search companies...</span>
+        <kbd className="text-[10px] font-mono bg-background border border-border rounded px-1 py-0.5 shrink-0">
+          ⌘K
+        </kbd>
+      </button>
 
       {/* Actions */}
       {actions && <div className="flex items-center gap-2">{actions}</div>}
@@ -55,9 +61,9 @@ export function TopBar({ title, subtitle, actions }: TopBarProps) {
       {/* Theme + notifications */}
       <div className="flex items-center gap-1">
         <div className="flex items-center rounded-md border border-border p-0.5">
-          <ThemeButton value="light" icon={Sun} label="Light mode" />
+          <ThemeButton value="light"  icon={Sun}     label="Light mode" />
           <ThemeButton value="system" icon={Monitor} label="System theme" />
-          <ThemeButton value="dark" icon={Moon} label="Dark mode" />
+          <ThemeButton value="dark"   icon={Moon}    label="Dark mode" />
         </div>
         <Button variant="ghost" size="icon-sm" title="Notifications">
           <Bell className="size-3.5" />

@@ -1,5 +1,11 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import type { LucideIcon } from 'lucide-react'
+import {
+  CreditCard, Cloud, ShoppingBag, Microscope, Heart, BookOpen,
+  ShoppingCart, Leaf, Sprout, Truck, Building2, Users, Scale, Layers,
+  Newspaper, DollarSign, UserPlus, Package, MessageSquare, Shield,
+} from 'lucide-react'
 import type { CompanyStatus, CompanySector, CompanyStage, SignalType } from '@vc/types'
 
 export function cn(...inputs: ClassValue[]) {
@@ -46,21 +52,21 @@ export const STATUS_CONFIG: Record<CompanyStatus, { label: string; color: string
   proceeding: { label: 'Proceeding', color: '#10b981', bg: '#10b98118' },
 }
 
-export const SECTOR_CONFIG: Record<CompanySector, { label: string; icon: string }> = {
-  fintech:    { label: 'Fintech',    icon: '💳' },
-  saas:       { label: 'SaaS',       icon: '☁️' },
-  consumer:   { label: 'Consumer',   icon: '🛍️' },
-  deeptech:   { label: 'DeepTech',   icon: '🔬' },
-  healthtech: { label: 'HealthTech', icon: '🏥' },
-  edtech:     { label: 'EdTech',     icon: '📚' },
-  ecommerce:  { label: 'eCommerce',  icon: '🛒' },
-  climate:    { label: 'Climate',    icon: '🌱' },
-  agritech:   { label: 'AgriTech',   icon: '🌾' },
-  logistics:  { label: 'Logistics',  icon: '🚚' },
-  proptech:   { label: 'PropTech',   icon: '🏘️' },
-  hrtech:     { label: 'HRTech',     icon: '👥' },
-  legaltech:  { label: 'LegalTech',  icon: '⚖️' },
-  other:      { label: 'Other',      icon: '🏢' },
+export const SECTOR_CONFIG: Record<CompanySector, { label: string; icon: LucideIcon }> = {
+  fintech:    { label: 'Fintech',    icon: CreditCard },
+  saas:       { label: 'SaaS',       icon: Cloud },
+  consumer:   { label: 'Consumer',   icon: ShoppingBag },
+  deeptech:   { label: 'DeepTech',   icon: Microscope },
+  healthtech: { label: 'HealthTech', icon: Heart },
+  edtech:     { label: 'EdTech',     icon: BookOpen },
+  ecommerce:  { label: 'eCommerce',  icon: ShoppingCart },
+  climate:    { label: 'Climate',    icon: Leaf },
+  agritech:   { label: 'AgriTech',   icon: Sprout },
+  logistics:  { label: 'Logistics',  icon: Truck },
+  proptech:   { label: 'PropTech',   icon: Building2 },
+  hrtech:     { label: 'HRTech',     icon: Users },
+  legaltech:  { label: 'LegalTech',  icon: Scale },
+  other:      { label: 'Other',      icon: Layers },
 }
 
 export const STAGE_CONFIG: Record<CompanyStage, { label: string; color: string }> = {
@@ -72,13 +78,13 @@ export const STAGE_CONFIG: Record<CompanyStage, { label: string; color: string }
   unknown:  { label: 'Unknown',  color: '#64748b' },
 }
 
-export const SIGNAL_CONFIG: Record<SignalType, { label: string; color: string; icon: string }> = {
-  news:       { label: 'News',       color: '#60a5fa', icon: '📰' },
-  funding:    { label: 'Funding',    color: '#34d399', icon: '💰' },
-  hiring:     { label: 'Hiring',     color: '#818cf8', icon: '👤' },
-  product:    { label: 'Product',    color: '#f59e0b', icon: '🚀' },
-  social:     { label: 'Social',     color: '#f472b6', icon: '📣' },
-  regulatory: { label: 'Regulatory', color: '#ef4444', icon: '⚖️' },
+export const SIGNAL_CONFIG: Record<SignalType, { label: string; color: string; icon: LucideIcon }> = {
+  news:       { label: 'News',       color: '#60a5fa', icon: Newspaper },
+  funding:    { label: 'Funding',    color: '#34d399', icon: DollarSign },
+  hiring:     { label: 'Hiring',     color: '#818cf8', icon: UserPlus },
+  product:    { label: 'Product',    color: '#f59e0b', icon: Package },
+  social:     { label: 'Social',     color: '#f472b6', icon: MessageSquare },
+  regulatory: { label: 'Regulatory', color: '#ef4444', icon: Shield },
 }
 
 export const SCORECARD_DIMENSIONS = [
@@ -91,7 +97,6 @@ export const SCORECARD_DIMENSIONS = [
 ] as const
 
 export function computeOverallScore(scores: Record<string, number | undefined | null>): number {
-  const { team, market, product, traction, business_model, investment_fit } = scores
   const weights = { team: 1.5, market: 1, product: 1, traction: 1, business_model: 1.5, investment_fit: 1 }
   let total = 0, totalWeight = 0
   for (const [key, weight] of Object.entries(weights)) {

@@ -1,24 +1,27 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
-  LayoutDashboard, Search, Zap, FileText, ChevronLeft, ChevronRight,
-  TrendingUp, Bot, Settings, Telescope, Filter
+  LayoutDashboard, Zap, FileText, ChevronLeft, ChevronRight,
+  TrendingUp, Bot, Settings, Telescope, Filter,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePipelineStore } from '@/stores/pipeline'
 import { Button } from '@/components/ui/button'
 
-const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { type: 'section', label: '01 Deal Sourcing' },
-  { label: 'Pipeline', href: '/sourcing', icon: TrendingUp, color: '#7c3aed' },
-  { label: 'Discover', href: '/sourcing/discover', icon: Telescope, color: '#7c3aed' },
-  { label: 'Signals', href: '/sourcing/signals', icon: Zap, color: '#7c3aed' },
-  { type: 'section', label: '02 Initial Screening' },
-  { label: 'Screening Queue', href: '/screening', icon: Filter, color: '#6366f1' },
-  { label: 'IC Memos', href: '/screening/memos', icon: FileText, color: '#6366f1' },
-  { type: 'section', label: 'System' },
-  { label: 'AI Agents', href: '/agents', icon: Bot },
-  { label: 'Settings', href: '/settings', icon: Settings },
+type NavItem =
+  | { type?: never; label: string; href: string; icon: React.ElementType; color?: string; matchPrefix?: boolean }
+  | { type: 'divider' }
+
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Dashboard',       href: '/',                   icon: LayoutDashboard },
+  { label: 'Pipeline',        href: '/sourcing',           icon: TrendingUp,      color: '#7c3aed', matchPrefix: true },
+  { label: 'Discover',        href: '/sourcing/discover',  icon: Telescope,       color: '#7c3aed' },
+  { label: 'Signals',         href: '/sourcing/signals',   icon: Zap,             color: '#7c3aed' },
+  { type: 'divider' },
+  { label: 'Screening Queue', href: '/screening',          icon: Filter,          color: '#6366f1', matchPrefix: true },
+  { label: 'IC Memos',        href: '/screening/memos',    icon: FileText,        color: '#6366f1' },
+  { type: 'divider' },
+  { label: 'AI Agents',       href: '/agents',             icon: Bot },
+  { label: 'Settings',        href: '/settings',           icon: Settings },
 ]
 
 export function Sidebar() {
@@ -51,25 +54,28 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
         {NAV_ITEMS.map((item, i) => {
-          if (item.type === 'section') {
-            if (sidebarCollapsed) return <div key={i} className="my-2 border-t border-sidebar-border" />
-            return (
-              <p key={i} className="px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                {item.label}
-              </p>
-            )
+          if (item.type === 'divider') {
+            return <div key={i} className="my-2 border-t border-sidebar-border" />
           }
 
-          const Icon = item.icon!
+          const Icon = item.icon
           const isActive = item.href === '/'
             ? location.pathname === '/'
-            : location.pathname.startsWith(item.href!)
+            : location.pathname === item.href ||
+              (item.matchPrefix === true &&
+                location.pathname.startsWith(item.href + '/') &&
+                !NAV_ITEMS.some(
+                  other =>
+                    other.type !== 'divider' &&
+                    other.href !== item.href &&
+                    location.pathname === other.href
+                ))
           const accentColor = item.color
 
           return (
             <Link
               key={item.href}
-              to={item.href!}
+              to={item.href}
               className={cn(
                 'group flex items-center gap-3 rounded-md px-2 py-1.5 text-sm transition-colors',
                 'hover:bg-accent hover:text-accent-foreground',

@@ -4,6 +4,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { SourcingPipelinePage } from '@/pages/sourcing/SourcingPipelinePage'
 import { DiscoverPage } from '@/pages/sourcing/DiscoverPage'
 import { SignalsPage } from '@/pages/sourcing/SignalsPage'
+import { CompanyDetailPage } from '@/pages/sourcing/CompanyDetailPage'
 import { ScreeningQueuePage } from '@/pages/screening/ScreeningQueuePage'
 import { ScreeningDetailPage } from '@/pages/screening/ScreeningDetailPage'
 
@@ -50,13 +51,7 @@ const signalsRoute = createRoute({
 const companyDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sourcing/companies/$id',
-  component: () => (
-    <div className="flex flex-col min-h-full">
-      <div className="p-6 text-center text-muted-foreground text-sm">
-        Company detail page — to be implemented (see CLAUDE.md)
-      </div>
-    </div>
-  ),
+  component: CompanyDetailPage,
 })
 
 // ─── Screening ────────────────────────────────────────────────────────────────
