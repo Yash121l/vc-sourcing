@@ -899,3 +899,5 @@ When building new features:
 10. Run `pnpm type-check` before considering a task complete
 11. For Cloudflare compatibility: avoid Node.js-only APIs in API routes (use Web APIs)
 12. Fund config affects AI scoring — always read config before running agents
+
+
