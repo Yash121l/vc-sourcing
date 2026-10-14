@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { screeningsApi, agentsApi } from '@/lib/api'
+import { captureEvent } from '@/lib/posthog'
 import { SCORECARD_DIMENSIONS, scoreColor, computeOverallScore, SECTOR_CONFIG, STAGE_CONFIG } from '@/lib/utils'
 import type { ScorecardDimensions } from '@vc/types'
 
@@ -60,13 +61,31 @@ export function ScreeningDetailPage() {
       id,
       screening?.meeting_notes ?? undefined
     ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['screening', id] }),
+    onSuccess: (result) => {
+      captureEvent('screening_scored', {
+        screening_id: id,
+        company_id: screening?.company_id,
+        overall_score: result.overall_score,
+        flag_count: result.flags.length,
+        had_meeting_notes: Boolean(screening?.meeting_notes),
+      })
+      return qc.invalidateQueries({ queryKey: ['screening', id] })
+    },
   })
 
   const decideMutation = useMutation({
     mutationFn: (decision: 'pass' | 'proceed' | 'watch') =>
       screeningsApi.decide(id, decision, decisionRationale),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['screening', id] }),
+    onSuccess: (_result, decision) => {
+      captureEvent('screening_decided', {
+        screening_id: id,
+        company_id: screening?.company_id,
+        decision,
+        overall_score: screening?.overall_score ?? undefined,
+        rationale_length: decisionRationale.trim().length,
+      })
+      return qc.invalidateQueries({ queryKey: ['screening', id] })
+    },
   })
 
   const updateNotesMutation = useMutation({
@@ -78,10 +97,31 @@ export function ScreeningDetailPage() {
     if (!screening) return
     setIsGeneratingMemo(true)
     setMemoText('')
-    await agentsApi.streamICMemo(screening.company_id, id, (chunk) => {
-      setMemoText(prev => prev + chunk)
-    })
-    setIsGeneratingMemo(false)
+    const started = performance.now()
+    let memoLength = 0
+    try {
+      const memo = await agentsApi.streamICMemo(screening.company_id, id, (chunk) => {
+        setMemoText(prev => prev + chunk)
+      })
+      memoLength = memo.length
+      captureEvent('ic_memo_generated', {
+        screening_id: id,
+        company_id: screening.company_id,
+        success: true,
+        memo_length: memoLength,
+        duration_ms: Math.round(performance.now() - started),
+      })
+    } catch (error) {
+      captureEvent('ic_memo_generated', {
+        screening_id: id,
+        company_id: screening.company_id,
+        success: false,
+        duration_ms: Math.round(performance.now() - started),
+      })
+      throw error
+    } finally {
+      setIsGeneratingMemo(false)
+    }
     qc.invalidateQueries({ queryKey: ['screening', id] })
   }
 

@@ -1,3 +1,5 @@
+import { identifyUser, resetUser } from './posthog'
+
 const API_URL = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3001'
 const TOKEN_KEY = 'vc_access_token'
 
@@ -41,6 +43,7 @@ export async function handleCallback(code: string): Promise<{ user: AuthUser; to
   if (!res.ok) throw new Error('Authentication failed')
   const json = await res.json() as { data: { access_token: string; user: AuthUser } }
   setToken(json.data.access_token)
+  identifyUser(json.data.user.id, { organization_id: json.data.user.organizationId })
   return { user: json.data.user, token: json.data.access_token }
 }
 
@@ -68,6 +71,7 @@ export async function signOut() {
     }).catch(() => {})
   }
   clearToken()
+  resetUser()
 }
 
 export function isDevMode(): boolean {

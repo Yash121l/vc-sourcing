@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { companiesApi, agentsApi } from '@/lib/api'
+import { captureEvent } from '@/lib/posthog'
 import type { CompanySector, CompanyStage, SourceType, AIPreScreenOutput } from '@vc/types'
 
 const SECTORS: CompanySector[] = ['fintech', 'saas', 'consumer', 'deeptech', 'healthtech', 'edtech',
@@ -119,7 +120,16 @@ export function DiscoverPage() {
       ...data,
       website: data.website || undefined,
     }),
-    onSuccess: (company) => {
+    onSuccess: (company, data) => {
+      captureEvent('company_added', {
+        company_id: company.id,
+        sector: data.sector,
+        stage: data.stage,
+        source_type: data.source_type,
+        has_website: Boolean(data.website),
+        ai_prescreened: aiResult !== null,
+        ai_recommendation: aiResult?.recommendation,
+      })
       qc.invalidateQueries({ queryKey: ['companies'] })
       void navigate({ to: '/sourcing/companies/$id', params: { id: company.id } })
     },
@@ -131,9 +141,22 @@ export function DiscoverPage() {
     const { name, website, description, sector, stage } = watch()
     if (!name) return
     setIsScreening(true)
+    const started = performance.now()
     try {
       const result = await agentsApi.preScreen({ name, website: website || undefined, description, sector, stage })
       setAiResult(result)
+      captureEvent('company_prescreened', {
+        success: true,
+        score: result.score,
+        recommendation: result.recommendation,
+        flag_count: result.flags.length,
+        sector,
+        stage,
+        duration_ms: Math.round(performance.now() - started),
+      })
+    } catch (error) {
+      captureEvent('company_prescreened', { success: false, duration_ms: Math.round(performance.now() - started) })
+      throw error
     } finally {
       setIsScreening(false)
     }

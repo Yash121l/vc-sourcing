@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { signalsApi } from '@/lib/api'
+import { captureEvent } from '@/lib/posthog'
 import { SIGNAL_CONFIG, formatRelativeTime } from '@/lib/utils'
 import type { Signal } from '@vc/types'
 
@@ -66,7 +67,11 @@ export function SignalsPage() {
 
   const markRead = useMutation({
     mutationFn: (id: string) => signalsApi.markRead(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['signals'] }),
+    onSuccess: (_result, signalId) => {
+      const signal = signals.find(s => s.id === signalId)
+      captureEvent('signal_read', { signal_type: signal?.type, company_id: signal?.company_id })
+      return qc.invalidateQueries({ queryKey: ['signals'] })
+    },
   })
 
   const unread = signals.filter(s => !s.is_read)
