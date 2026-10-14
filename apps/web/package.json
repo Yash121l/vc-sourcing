@@ -37,7 +37,7 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.468.0",
-    "posthog-js": "^1.382.0",
+    "posthog-js": "^1.438.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
@@ -63,6 +63,7 @@
     "typescript": "^5.7.3",
     "vite": "^6.0.7",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.0.2"
+    "vitest": "^3.0.2",
+    "wrangler": "^3.99.0"
   }
 }

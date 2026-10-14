@@ -29,6 +29,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { companiesApi } from '@/lib/api'
+import { captureEvent } from '@/lib/posthog'
 import {
   cn,
   formatCurrency,
@@ -494,7 +495,14 @@ export function CompanyDetailPage() {
         }
         return res.json()
       }),
-    onSuccess: () => {
+    onSuccess: (_result, status) => {
+      captureEvent('company_status_changed', {
+        company_id: id,
+        from_status: company?.status,
+        to_status: status,
+        sector: company?.sector,
+        stage: company?.stage,
+      })
       void qc.invalidateQueries({ queryKey: ['companies', id] })
       void qc.invalidateQueries({ queryKey: ['companies'] })
     },
